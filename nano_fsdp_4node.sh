@@ -143,6 +143,18 @@ LR_WARMUP_SAMPLES=1_024_000
 LR_DECAY_SAMPLES=122_070_313
 LR_WSD_DECAY_SAMPLES=18_310_547
 
+mock_options=""
+if [[ "${MOCK}" == "true" ]]; then
+    mock_options=" \
+    --moe-router-force-load-balancing \
+    --mock-data"
+
+    TRAIN_SAMPLES=40000
+    LR_WARMUP_SAMPLES=2000
+    LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
+    LR_WSD_DECAY_SAMPLES=40000
+fi
+
 options=" \
         --moe-router-score-function sigmoid \
         --moe-grouped-gemm \
@@ -309,13 +321,6 @@ wandb_options=" \
     --wandb-exp-name nano_fsdp_4node \
     --wandb-save-dir ${RUN_DIR}/wandb/ \
     --wandb-entity nvidia"
-
-mock_options=""
-if [[ "${MOCK}" == "true" ]]; then
-    mock_options=" \
-    --moe-router-force-load-balancing \
-    --data-mock"
-fi
 
 #nsys_cmd="nsys profile -s none -t nvtx,cuda-sw -o ${RUN_DIR}/${NAME}_node${SLURM_NODEID}_rank${SLURM_PROCID} --force-overwrite true --cuda-graph-trace=node --capture-range=cudaProfilerApi --capture-range-end=stop"
 #run_cmd="${nsys_cmd} python -u ${MEGATRON_LM_DIR}/pretrain_mamba.py ${options} ${mxfp8_options} ${mtp_options} ${fsdp_options} ${profile_options}"
