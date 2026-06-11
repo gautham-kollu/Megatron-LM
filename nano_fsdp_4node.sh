@@ -32,6 +32,7 @@ export NCCL_SHM_DISABLE=1
 export NCCL_PROTO=simple
 export NCCL_NVLS_ENABLE=0
 #export NCCL_SYM_GIN_KERNELS_ENABLE=1
+export NVTE_CUTEDSL_FUSED_GROUPED_MLP=1
 
 export NUM_OF_TOKENS_PER_CHUNK_COMBINE_API=128
 #export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=64
@@ -39,6 +40,7 @@ export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=8
 export USE_MNNVL=1
 
 EXIT_INTERVAL=1000
+MOCK="${MOCK:-false}"
 
 # Mandatory environment variable checks
 if [[ -z "${WANDB_API_KEY:-}" ]]; then
@@ -136,10 +138,10 @@ echo "<< END ENV >>" |& tee -a ${LOGS_DIR}/${ENV_LOG_FILENAME}
 # #cp ${BLEND_PATH} ${RUN_DIR}/scripts/data
 
 SEQ_LEN=8192
-TRAIN_SAMPLES=40000
-LR_WARMUP_SAMPLES=2000
-LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
-LR_WSD_DECAY_SAMPLES=40000
+TRAIN_SAMPLES=122_070_313
+LR_WARMUP_SAMPLES=1_024_000
+LR_DECAY_SAMPLES=122_070_313
+LR_WSD_DECAY_SAMPLES=18_310_547
 
 options=" \
         --moe-router-score-function sigmoid \
@@ -157,7 +159,6 @@ options=" \
         --moe-token-dispatcher-type flex \
         --moe-hybridep-num-sms 32 \
         --moe-router-fusion \
-        --moe-router-force-load-balancing \
         \
         --num-workers 1 \
         --disable-gloo-process-groups \
@@ -182,8 +183,6 @@ options=" \
         --high-priority-stream-groups ep \
         --ddp-num-buckets 24 \
         --grad-reduce-in-bf16 \
-        \
-        --mock-data \
         --hybrid-layer-pattern MEMEM*EMEMEM*EMEMEM*EMEMEM*EMEMEM*EMEMEMEM*EMEMEMEME \
         --spec megatron.core.models.hybrid.hybrid_layer_specs hybrid_stack_spec \
         --hidden-size 2688 \
@@ -211,8 +210,8 @@ options=" \
         --distributed-backend nccl \
         --micro-batch-size 1 \
         --global-batch-size 128 \
-        --lr 8.0e-4 \
-        --min-lr 8.0e-6 \
+        --lr 1.2e-3 \
+        --min-lr 1.2e-5 \
         --weight-decay 0.1 \
         --clip-grad 1.0 \
         --attention-dropout 0.0 \
@@ -240,19 +239,21 @@ options=" \
         --offload-modules moe_act \
         --recompute-granularity selective \
         --recompute-modules moe_act \
-        --exit-interval ${EXIT_INTERVAL}"
+        --exit-interval ${EXIT_INTERVAL} \
+        --tensorboard-dir ${TENSORBOARD_DIR} \
+        --ddp-reduce-scatter-with-fp32-accumulation \
+        --use-transformer-engine-op-fuser"
         #--per-split-data-args-path ${BLEND_PATH} \
         #--save ${CHECKPOINT_DIR} \
         #--load ${CHECKPOINT_DIR} \
         #--save-interval 2000 \
-        #--tensorboard-dir ${TENSORBOARD_DIR}"
         #--recompute-granularity selective \
         #--recompute-modules layernorm \
         #--moe-shared-expert-overlap \
         #--moe-shared-expert-compute-before-router \
         #--hybrid-override-pattern MEMEMEM*EMEMEMEMEM*EMEMEMEMEM*EMEMEMEMEM*EMEMEMEMEM*EMEMEMEMEM*EMEMEMEMEM*EMEMEMEMEM*EMEMEMEMEM*EMEMEMEMEM*EMEMEMEMEME \
         #--hybrid-override-pattern \"ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|M*E|ME|ME|ME|ME|ME\" \
-        #--ddp-reduce-scatter-with-fp32-accumulation \
+        
         #--moe-hybridep-permute-fusion \
         #--enable-cuda-graph \
         #--cuda-graph-scope mamba attn moe_router \
@@ -309,12 +310,19 @@ wandb_options=" \
     --wandb-save-dir ${RUN_DIR}/wandb/ \
     --wandb-entity nvidia"
 
+mock_options=""
+if [[ "${MOCK}" == "true" ]]; then
+    mock_options=" \
+    --moe-router-force-load-balancing \
+    --data-mock"
+fi
+
 #nsys_cmd="nsys profile -s none -t nvtx,cuda-sw -o ${RUN_DIR}/${NAME}_node${SLURM_NODEID}_rank${SLURM_PROCID} --force-overwrite true --cuda-graph-trace=node --capture-range=cudaProfilerApi --capture-range-end=stop"
 #run_cmd="${nsys_cmd} python -u ${MEGATRON_LM_DIR}/pretrain_mamba.py ${options} ${mxfp8_options} ${mtp_options} ${fsdp_options} ${profile_options}"
 
 export PYTHONPATH=${MEGATRON_LM_DIR}:${PYTHONPATH}
 
-run_cmd="python -u ${MEGATRON_LM_DIR}/pretrain_hybrid.py ${options} ${mxfp8_options} ${mtp_options} ${fsdp_options} ${profile_options}"
+run_cmd="python -u ${MEGATRON_LM_DIR}/pretrain_hybrid.py ${options} ${mxfp8_options} ${mtp_options} ${fsdp_options} ${profile_options} ${wandb_options} ${mock_options}"
 
 srun -l --mpi=pmix \
     --container-image "${IMAGE}" \
