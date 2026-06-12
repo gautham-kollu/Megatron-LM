@@ -200,7 +200,7 @@ options=" \
         --log-progress \
         --log-energy \
         --logging-level 20 \
-        --check-weight-hash-across-dp-replicas-interval 20000\
+        --check-weight-hash-across-dp-replicas-interval 20000 \
         --attention-backend flash \
         --disable-straggler-on-startup \
         --straggler-minmax-count 16 \
