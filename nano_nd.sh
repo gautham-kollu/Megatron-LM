@@ -28,7 +28,8 @@ BLEND_PATH="${ASSETS_ROOT}/blend_files/1t_singlephase.json"
 MEGATRON_LM_DIR="${LUSTRE_ROOT}/Megatron-LM"
 #PERF_OPT_DIR="/lustre/fsw/portfolios/coreai/projects/coreai_dlalgo_llm/users/gkollu/my_work/nemo_megatron/perf_optimization"
 OUTPUT_ROOT="${LUSTRE_ROOT}/logs"
-IMAGE="${ASSETS_ROOT}/nvidia+pytorch+25.06-py3+dependencies+mamba.sqsh"
+#IMAGE="${ASSETS_ROOT}/nvidia+pytorch+25.06-py3+dependencies+mamba.sqsh"
+IMAGE="${ASSETS_ROOT}/30u1719b2bbb.sqsh"
 ########################################################
 #### CHANGES SHOULD NOT BE NEEDED BEYOND THIS POINT ####
 ########################################################
@@ -104,6 +105,8 @@ LR_WARMUP_SAMPLES=1_024_000
 LR_DECAY_SAMPLES=122_070_313
 LR_WSD_DECAY_SAMPLES=18_310_547
 
+export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=32
+
 options=" \
         --moe-router-score-function sigmoid \
         --moe-grouped-gemm \
@@ -116,7 +119,9 @@ options=" \
         --moe-permute-fusion \
         --moe-router-load-balancing-type seq_aux_loss \
         --moe-shared-expert-intermediate-size 3712 \
-        --moe-token-dispatcher-type alltoall \
+        --moe-token-dispatcher-type flex \
+        --moe-flex-dispatcher-backend hybridep \
+        --moe-hybridep-num-sms 32 \
         \
         --num-workers 1 \
         --disable-gloo-process-groups \
@@ -178,7 +183,7 @@ options=" \
         --normalization RMSNorm \
         --adam-beta1 0.9 \
         --adam-beta2 0.95 \
-        --log-interval 100 \
+        --log-interval 1 \
         --log-params-norm \
         --log-num-zeros-in-grad \
         --log-throughput \
@@ -235,7 +240,13 @@ mxfp8_options=" \
     --fp8-param-gather \
     --reuse-grad-buf-for-mxfp8-param-ag"
 
-run_cmd="python -u ${MEGATRON_LM_DIR}/pretrain_hybrid.py ${options} ${mxfp8_options}"
+wandb_options=" \
+    --wandb-project nemotron_convergence \
+    --wandb-exp-name nano_fsdp_4node \
+    --wandb-save-dir ${RUN_DIR}/wandb/ \
+    --wandb-entity nvidia"
+
+run_cmd="python -u ${MEGATRON_LM_DIR}/pretrain_hybrid.py ${options} ${wandb_options} ${mxfp8_options}"
 
 srun -l --mpi=pmix \
     --no-container-mount-home \

@@ -33,7 +33,7 @@ export NVTE_CUTEDSL_FUSED_GROUPED_MLP=1
 
 export NUM_OF_TOKENS_PER_CHUNK_COMBINE_API=128
 #export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=64
-export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=8
+export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=32
 export USE_MNNVL=1
 
 EXIT_INTERVAL=1000
@@ -191,7 +191,7 @@ options=" \
         --overlap-grad-reduce \
         --overlap-param-gather \
         --tensor-model-parallel-size 1 \
-        --expert-model-parallel-size 8 \
+        --expert-model-parallel-size 32 \
         --expert-tensor-parallel-size 1 \
         --pipeline-model-parallel-size 1 \
         --use-distributed-optimizer \
@@ -235,7 +235,7 @@ options=" \
         --normalization RMSNorm \
         --adam-beta1 0.9 \
         --adam-beta2 0.95 \
-        --log-interval 100 \
+        --log-interval 1 \
         --log-params-norm \
         --log-num-zeros-in-grad \
         --log-throughput \
