@@ -1,13 +1,11 @@
 #!/bin/bash
 
-#SBATCH -A coreai_dlalgo_llm
+#SBATCH --account nemotron_sw_pre
 #SBATCH -p batch
 #SBATCH --mem=0
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4
-#SBATCH --overcommit
 #SBATCH --exclusive
-#SBATCH --comment=metrics
 #SBATCH --dependency=singleton
 #SBATCH --job-name=nano_fsdp
 
@@ -37,7 +35,8 @@ export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=32
 export USE_MNNVL=1
 
 EXIT_INTERVAL=1000
-MOCK="${MOCK:-false}"
+
+export WANDB_RESUME="allow"
 
 # Mandatory environment variable checks
 if [[ -z "${WANDB_API_KEY:-}" ]]; then
@@ -141,23 +140,6 @@ LR_WARMUP_SAMPLES=1_024_000
 LR_DECAY_SAMPLES=122_070_313
 LR_WSD_DECAY_SAMPLES=18_310_547
 
-# TRAIN_SAMPLES=40000
-# LR_WARMUP_SAMPLES=2000
-# LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
-# LR_WSD_DECAY_SAMPLES=40000
-
-mock_options=""
-if [[ "${MOCK}" == "true" ]]; then
-    mock_options=" \
-    --moe-router-force-load-balancing \
-    --mock-data"
-
-    TRAIN_SAMPLES=40000
-    LR_WARMUP_SAMPLES=2000
-    LR_DECAY_SAMPLES=$((TRAIN_SAMPLES-LR_WARMUP_SAMPLES))
-    LR_WSD_DECAY_SAMPLES=40000
-fi
-
 options=" \
         --moe-router-score-function sigmoid \
         --moe-grouped-gemm \
@@ -178,8 +160,14 @@ options=" \
         --num-workers 1 \
         --disable-gloo-process-groups \
         --ckpt-format torch_dist \
+        --load ${CHECKPOINT_DIR} \
+        --save ${CHECKPOINT_DIR} \
+        --save-interval 500 \
+        --save-retain-interval 2000 \
         --ckpt-fully-parallel-save \
         --ckpt-fully-parallel-load \
+        --async-save \
+        --use-persistent-ckpt-worker \
         --ckpt-assume-constant-structure \
         \
         --squared-relu \
@@ -198,6 +186,7 @@ options=" \
         --high-priority-stream-groups ep \
         --ddp-num-buckets 24 \
         --grad-reduce-in-bf16 \
+        --ddp-reduce-scatter-with-fp32-accumulation \
         --hybrid-layer-pattern MEMEM*EMEMEM*EMEMEM*EMEMEM*EMEMEM*EMEMEMEM*EMEMEMEME \
         --spec megatron.core.models.hybrid.hybrid_layer_specs hybrid_stack_spec \
         --hidden-size 2688 \
@@ -250,16 +239,20 @@ options=" \
         --use-fused-weighted-squared-relu \
         --cross-entropy-loss-fusion \
         --cross-entropy-fusion-impl native \
-        --fine-grained-activation-offloading \
-        --offload-modules moe_act \
-        --recompute-granularity selective \
-        --recompute-modules moe_act \
         --exit-interval ${EXIT_INTERVAL} \
         --tensorboard-dir ${TENSORBOARD_DIR} \
-        --ddp-reduce-scatter-with-fp32-accumulation \
         --use-transformer-engine-op-fuser \
         --per-split-data-args-path ${BLEND_PATH} \
-        --attention-backend flash"
+        --log-memory-interval 1000 \
+        --log-progress \
+        --log-energy \
+        --logging-level 20 \
+        --check-weight-hash-across-dp-replicas-interval 20000 \
+        --disable-straggler-on-startup \
+        --straggler-minmax-count 16 \
+        --timing-log-option minmax \
+        --attention-backend flash \
+        --te-rng-tracker"
         #--save ${CHECKPOINT_DIR} \
         #--load ${CHECKPOINT_DIR} \
         #--save-interval 2000 \
@@ -275,6 +268,12 @@ options=" \
         #--cuda-graph-scope mamba attn moe_router \
         #--te-rng-tracker \
         #--offload-optimizer-states \
+
+
+# --fine-grained-activation-offloading \
+# --offload-modules moe_act \
+# --recompute-granularity selective \
+# --recompute-modules moe_act \
 
 mxfp8_options=" \
     --moe-router-padding-for-quantization \
@@ -296,16 +295,9 @@ fsdp_options=" \
     #--use-nccl-ub \
     #--use-sharp \
 
-profile_options=" \
-    --profile \
-    --profile-step-start 225 \
-    --profile-step-end 227 \
-    --profile-ranks 0"
-    #--memory-snapshot-path ${RUN_DIR}/${NAME}_node${SLURM_NODEID}_rank${SLURM_PROCID}.pickle \
-
 wandb_options=" \
     --wandb-project nemotron_convergence \
-    --wandb-exp-name nano_fsdp_4node \
+    --wandb-exp-name nano_fsdp \
     --wandb-save-dir ${RUN_DIR}/wandb/ \
     --wandb-entity nvidia"
 
@@ -314,7 +306,7 @@ wandb_options=" \
 
 export PYTHONPATH=${MEGATRON_LM_DIR}:${PYTHONPATH}
 
-run_cmd="python -u ${MEGATRON_LM_DIR}/pretrain_hybrid.py ${options} ${mxfp8_options} ${fsdp_options} ${profile_options} ${wandb_options} ${mock_options}"
+run_cmd="python -u ${MEGATRON_LM_DIR}/pretrain_hybrid.py ${options} ${mxfp8_options} ${fsdp_options} ${wandb_options} ${mock_options}"
 
 srun -l --mpi=pmix \
     --container-image "${IMAGE}" \

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A coreai_dlalgo_llm
+#SBATCH --account nemotron_sw_pre
 #SBATCH -p batch
 #SBATCH --mem=0
 #SBATCH --ntasks-per-node=4
@@ -17,6 +17,7 @@ export TORCHINDUCTOR_WORKER_START=fork
 export TRITON_CACHE_DIR="/tmp/triton_cache/"
 
 EXIT_INTERVAL=1000
+export WANDB_RESUME="allow"
 
 # ROOT PATHS
 ASSETS_ROOT="${LUSTRE_ROOT}/assets/nemotron"
@@ -48,7 +49,7 @@ fi
 
 RUN_DIR="${OUTPUT_ROOT}/${NAME}"
 LOGS_DIR="${RUN_DIR}/logs"
-CHECKPOINT_DIR="${RUN_DIR}/checkpoints"
+CHECKPOINT_DIR="${RUN_DIR}/checkpoints/nano_nd"
 TENSORBOARD_DIR="${RUN_DIR}/tensorboard"
 
 mkdir -p ${LOGS_DIR}
@@ -125,19 +126,27 @@ options=" \
         \
         --num-workers 1 \
         --disable-gloo-process-groups \
+        \
         --ckpt-format torch_dist \
+        --load ${CHECKPOINT_DIR} \
+        --save ${CHECKPOINT_DIR} \
+        --save-interval 500 \
+        --save-retain-interval 2000 \
         --ckpt-fully-parallel-save \
         --ckpt-fully-parallel-load \
+        --async-save \
+        --use-persistent-ckpt-worker \
         --ckpt-assume-constant-structure \
         \
         --squared-relu \
         --no-mmap-bin-files \
         --distributed-timeout-minutes 10 \
-        --exit-duration-in-mins ${EXIT_INTERVAL} \
         --no-create-attention-mask-in-dataloader \
         \
         --overlap-grad-reduce \
         --overlap-param-gather \
+        --grad-reduce-in-bf16 \
+        --ddp-reduce-scatter-with-fp32-accumulation \        
         --tensor-model-parallel-size 2 \
         --sequence-parallel \
         --expert-model-parallel-size 32 \
@@ -198,9 +207,9 @@ options=" \
         --manual-gc-interval 10 \
         --use-fused-weighted-squared-relu \
         --exit-interval ${EXIT_INTERVAL} \
+        --exit-duration-in-mins 25 \
         --per-split-data-args-path ${BLEND_PATH} \
         --tensorboard-dir ${TENSORBOARD_DIR} \
-        --no-load-rng \
         --log-memory-interval 1000 \
         --log-progress \
         --log-energy \
@@ -226,7 +235,7 @@ options=" \
         #--cuda-graph-scope mamba attn moe_router \
         #--te-rng-tracker \
         #--offload-optimizer-states \
-
+#        --no-load-rng \
 
 # --fine-grained-activation-offloading \
 # --offload-modules moe_act \
@@ -242,7 +251,7 @@ mxfp8_options=" \
 
 wandb_options=" \
     --wandb-project nemotron_convergence \
-    --wandb-exp-name nano_fsdp_4node \
+    --wandb-exp-name nana_nd \
     --wandb-save-dir ${RUN_DIR}/wandb/ \
     --wandb-entity nvidia"
 
