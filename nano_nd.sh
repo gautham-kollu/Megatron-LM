@@ -146,7 +146,7 @@ options=" \
         --overlap-grad-reduce \
         --overlap-param-gather \
         --grad-reduce-in-bf16 \
-        --ddp-reduce-scatter-with-fp32-accumulation \        
+        --ddp-reduce-scatter-with-fp32-accumulation \
         --tensor-model-parallel-size 2 \
         --sequence-parallel \
         --expert-model-parallel-size 32 \

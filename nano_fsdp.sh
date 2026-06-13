@@ -247,7 +247,6 @@ options=" \
         --log-progress \
         --log-energy \
         --logging-level 20 \
-        --check-weight-hash-across-dp-replicas-interval 20000 \
         --disable-straggler-on-startup \
         --straggler-minmax-count 16 \
         --timing-log-option minmax \
