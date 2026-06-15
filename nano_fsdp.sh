@@ -7,7 +7,7 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --exclusive
 #SBATCH --dependency=singleton
-#SBATCH --job-name=nano_fsdp
+#SBATCH --job-name=nano_vanilla_fsdp_1000steps
 
 export NCCL_IB_SL=1
 export NCCL_IB_TIMEOUT=19
@@ -31,7 +31,7 @@ export NVTE_CUTEDSL_FUSED_GROUPED_MLP=1
 
 export NUM_OF_TOKENS_PER_CHUNK_COMBINE_API=128
 #export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=64
-export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=32
+export NUM_OF_HYBRID_EP_RANKS_PER_NVLINK_DOMAIN=64
 export USE_MNNVL=1
 
 EXIT_INTERVAL=1000
@@ -173,13 +173,13 @@ options=" \
         --squared-relu \
         --no-mmap-bin-files \
         --distributed-timeout-minutes 10 \
-        --exit-duration-in-mins 1430 \
+        --exit-duration-in-mins 235 \
         --no-create-attention-mask-in-dataloader \
         \
         --overlap-grad-reduce \
         --overlap-param-gather \
         --tensor-model-parallel-size 1 \
-        --expert-model-parallel-size 32 \
+        --expert-model-parallel-size 64 \
         --expert-tensor-parallel-size 1 \
         --pipeline-model-parallel-size 1 \
         --use-distributed-optimizer \
@@ -283,6 +283,17 @@ mxfp8_options=" \
 
 fsdp_options=" \
     --use-megatron-fsdp \
+    --num-distributed-optimizer-instances 1 \
+    --outer-dp-sharding-strategy no_shard \
+    --data-parallel-sharding-strategy optim_grads_params \
+    --no-gradient-accumulation-fusion \
+    --ckpt-format fsdp_dtensor \
+    --megatron-fsdp-grad-comm-dtype bf16 \
+    --megatron-fsdp-main-params-dtype fp32 \
+    --megatron-fsdp-main-grads-dtype bf16"
+
+hfsdp_options=" \
+    --use-megatron-fsdp \
     --num-distributed-optimizer-instances 2 \
     --outer-dp-sharding-strategy optim \
     --data-parallel-sharding-strategy optim_grads_params \
@@ -296,7 +307,7 @@ fsdp_options=" \
 
 wandb_options=" \
     --wandb-project nemotron_convergence \
-    --wandb-exp-name nano_fsdp \
+    --wandb-exp-name ${SLURM_JOB_NAME} \
     --wandb-save-dir ${RUN_DIR}/wandb/ \
     --wandb-entity nvidia"
 

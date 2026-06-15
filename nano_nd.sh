@@ -7,7 +7,7 @@
 #SBATCH --gpus-per-node=4
 #SBATCH --exclusive
 #SBATCH --dependency=singleton
-#SBATCH --job-name=nano_nd
+#SBATCH --job-name=nano_nd_1000steps
 
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export NVTE_FWD_LAYERNORM_SM_MARGIN=16
@@ -207,7 +207,7 @@ options=" \
         --manual-gc-interval 10 \
         --use-fused-weighted-squared-relu \
         --exit-interval ${EXIT_INTERVAL} \
-        --exit-duration-in-mins 25 \
+        --exit-duration-in-mins 235 \
         --per-split-data-args-path ${BLEND_PATH} \
         --tensorboard-dir ${TENSORBOARD_DIR} \
         --log-memory-interval 1000 \
