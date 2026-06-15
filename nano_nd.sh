@@ -251,7 +251,7 @@ mxfp8_options=" \
 
 wandb_options=" \
     --wandb-project nemotron_convergence \
-    --wandb-exp-name nana_nd \
+    --wandb-exp-name ${SLURM_JOB_NAME} \
     --wandb-save-dir ${RUN_DIR}/wandb/ \
     --wandb-entity nvidia"
 
