@@ -76,7 +76,7 @@ fi
 
 RUN_DIR="${OUTPUT_ROOT}/${NAME}"
 LOGS_DIR="${RUN_DIR}/logs"
-CHECKPOINT_DIR="${RUN_DIR}/checkpoints"
+CHECKPOINT_DIR="${RUN_DIR}/checkpoints/nano_fsdp"
 TENSORBOARD_DIR="${RUN_DIR}/tensorboard"
 
 # Mamba triton cache.
