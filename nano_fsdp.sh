@@ -173,7 +173,7 @@ options=" \
         --squared-relu \
         --no-mmap-bin-files \
         --distributed-timeout-minutes 10 \
-        --exit-duration-in-mins 235 \
+        --exit-duration-in-mins 225 \
         --no-create-attention-mask-in-dataloader \
         \
         --overlap-grad-reduce \
@@ -239,7 +239,6 @@ options=" \
         --use-fused-weighted-squared-relu \
         --cross-entropy-loss-fusion \
         --cross-entropy-fusion-impl native \
-        --exit-interval ${EXIT_INTERVAL} \
         --tensorboard-dir ${TENSORBOARD_DIR} \
         --use-transformer-engine-op-fuser \
         --per-split-data-args-path ${BLEND_PATH} \
@@ -252,6 +251,7 @@ options=" \
         --timing-log-option minmax \
         --attention-backend flash \
         --te-rng-tracker"
+        #--exit-interval ${EXIT_INTERVAL} \
         #--save ${CHECKPOINT_DIR} \
         #--load ${CHECKPOINT_DIR} \
         #--save-interval 2000 \

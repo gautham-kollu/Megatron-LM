@@ -206,8 +206,7 @@ options=" \
         --manual-gc \
         --manual-gc-interval 10 \
         --use-fused-weighted-squared-relu \
-        --exit-interval ${EXIT_INTERVAL} \
-        --exit-duration-in-mins 235 \
+        --exit-duration-in-mins 225 \
         --per-split-data-args-path ${BLEND_PATH} \
         --tensorboard-dir ${TENSORBOARD_DIR} \
         --log-memory-interval 1000 \
@@ -219,6 +218,7 @@ options=" \
         --disable-straggler-on-startup \
         --straggler-minmax-count 16 \
         --timing-log-option minmax"
+        #--exit-interval ${EXIT_INTERVAL} \
         #--save ${CHECKPOINT_DIR} \
         #--load ${CHECKPOINT_DIR} \
         #--save-interval 2000 \
