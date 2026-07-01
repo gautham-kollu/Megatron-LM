@@ -159,7 +159,6 @@ options=" \
         \
         --num-workers 1 \
         --disable-gloo-process-groups \
-        --ckpt-format torch_dist \
         --load ${CHECKPOINT_DIR} \
         --save ${CHECKPOINT_DIR} \
         --save-interval 500 \
