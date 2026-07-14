@@ -278,7 +278,8 @@ fi
 echo "==============================================="
 
 #IMAGE="nvcr.io/nvidian/nemo:nightly"
-IMAGE="$LUSTRE_ROOT/containers/jul14_nightly.sqsh"
+#IMAGE="$LUSTRE_ROOT/containers/jul14_nightly.sqsh"
+IMAGE="$LUSTRE_ROOT/containers/26.06.sqsh"
 
 run_cmd="${NSYS_CMD[@]} python -u ${MEGATRON_LM_DIR}/pretrain_gpt.py \
          ${MODEL_ARGS[@]} \
