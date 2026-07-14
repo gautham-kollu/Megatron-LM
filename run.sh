@@ -19,6 +19,9 @@
 
 set -euo pipefail
 
+echo "=== Compressed Slurm Node List ==="
+echo $SLURM_JOB_NODELIST
+
 export  PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
 export NCCL_NVLS_ENABLE=0
 export  NVTE_FUSED_ATTN=0
@@ -75,7 +78,7 @@ if [[ "$NSYS_PROFILE" == "1" ]]; then
         nsys profile
         -s none
         -t nvtx,cuda
-        -o "$NSYS_PROFILE_PATH_$DATETIME"
+        -o "${NSYS_PROFILE_PATH}_${DATETIME}"
         --force-overwrite true
         --capture-range=cudaProfilerApi
         --capture-range-end=stop
