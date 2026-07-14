@@ -6,6 +6,7 @@ ENV_VARS:
   NCCL_NVLS_ENABLE: 0
   NCCL_DEBUG: VERSION
   NCCL_ALGO: Ring
+  NSYS_PROFILE: 0
 
 MODEL_ARGS:
 
@@ -137,6 +138,12 @@ MODEL_ARGS:
   --tensorboard-dir: ${TENSORBOARD_PATH}
 
   --exit-interval: 50
+NSYS:
+  OUTPUT_PATH: ${OUTPUT_PATH}/nsys/deepseek_proxy_fsdp_ep2_fsdp2
+  PROFILE_STEP_START: 10
+  PROFILE_STEP_END: 11
+  PROFILE_RANKS: 0
+  NVTX_RANGES: true
 TEST_TYPE: regular
 METRICS:
   - "iteration-time"

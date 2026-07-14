@@ -191,6 +191,35 @@ mkdir -p $LOG_DIR
 # Read launcher type from model config (default: torchrun)
 LAUNCHER=$(/usr/local/bin/yq '.LAUNCHER // "torchrun"' "$TRAINING_PARAMS_PATH")
 
+NSYS_PROFILE=${NSYS_PROFILE:-0}
+PROFILE_WRAPPER=()
+if [[ "$NSYS_PROFILE" == "1" || "$NSYS_PROFILE" == "true" ]]; then
+    NSYS_OUTPUT_PATH=$(/usr/local/bin/yq '.NSYS.OUTPUT_PATH // "'"${OUTPUT_PATH}/nsys"'"' "$TRAINING_PARAMS_PATH")
+    NSYS_PROFILE_STEP_START=$(/usr/local/bin/yq '.NSYS.PROFILE_STEP_START // "10"' "$TRAINING_PARAMS_PATH")
+    NSYS_PROFILE_STEP_END=$(/usr/local/bin/yq '.NSYS.PROFILE_STEP_END // "12"' "$TRAINING_PARAMS_PATH")
+    NSYS_PROFILE_RANKS=$(/usr/local/bin/yq '.NSYS.PROFILE_RANKS // "0"' "$TRAINING_PARAMS_PATH")
+    NSYS_NVTX_RANGES=$(/usr/local/bin/yq '.NSYS.NVTX_RANGES // "true"' "$TRAINING_PARAMS_PATH")
+    mkdir -p "$(dirname "$NSYS_OUTPUT_PATH")"
+    PROFILE_WRAPPER=(
+        nsys profile
+        --sample=none --cpuctxsw=none
+        --trace=cuda,nvtx,cublas,cudnn
+        --capture-range=cudaProfilerApi --capture-range-end=stop
+        --cuda-graph-trace=node --cuda-memory-usage=true
+        -f true -x true
+        -o "$NSYS_OUTPUT_PATH"
+    )
+    PARAMS+=(
+        --profile
+        --profile-step-start "$NSYS_PROFILE_STEP_START"
+        --profile-step-end "$NSYS_PROFILE_STEP_END"
+        --profile-ranks "$NSYS_PROFILE_RANKS"
+    )
+    if [[ "$NSYS_NVTX_RANGES" == "true" ]]; then
+        PARAMS+=(--nvtx-ranges)
+    fi
+fi
+
 DISTRIBUTED_ARGS=(
     --nproc_per_node $GPUS_PER_NODE
     --nnodes $NUM_NODES
@@ -209,18 +238,18 @@ FT_LAUNCHER_ARGS=(
 # Start training
 if [[ "$IS_NEMO_TEST" == "true" ]]; then
     if [[ "$LAUNCHER" == "ft_launcher" ]]; then
-        ft_launcher ${DISTRIBUTED_ARGS[@]} ${FT_LAUNCHER_ARGS[@]} \
+        "${PROFILE_WRAPPER[@]}" ft_launcher ${DISTRIBUTED_ARGS[@]} ${FT_LAUNCHER_ARGS[@]} \
             --no-python /opt/venv/bin/$TRAINING_SCRIPT_PATH "${PARAMS[@]}" && EXIT_CODE=0 || EXIT_CODE=$?
     else
-        uv run --no-sync python -m torch.distributed.run ${DISTRIBUTED_ARGS[@]} \
+        "${PROFILE_WRAPPER[@]}" uv run --no-sync python -m torch.distributed.run ${DISTRIBUTED_ARGS[@]} \
             --no-python /opt/venv/bin/$TRAINING_SCRIPT_PATH "${PARAMS[@]}" && EXIT_CODE=0 || EXIT_CODE=$?
     fi
 else
     if [[ "$LAUNCHER" == "ft_launcher" ]]; then
-        ft_launcher ${DISTRIBUTED_ARGS[@]} ${FT_LAUNCHER_ARGS[@]} \
+        "${PROFILE_WRAPPER[@]}" ft_launcher ${DISTRIBUTED_ARGS[@]} ${FT_LAUNCHER_ARGS[@]} \
             $TRAINING_SCRIPT_PATH "${PARAMS[@]}" && EXIT_CODE=0 || EXIT_CODE=$?
     else
-        uv run --no-sync python -m torch.distributed.run ${DISTRIBUTED_ARGS[@]}  \
+        "${PROFILE_WRAPPER[@]}" uv run --no-sync python -m torch.distributed.run ${DISTRIBUTED_ARGS[@]}  \
             $TRAINING_SCRIPT_PATH "${PARAMS[@]}" && EXIT_CODE=0 || EXIT_CODE=$?
     fi
 fi
