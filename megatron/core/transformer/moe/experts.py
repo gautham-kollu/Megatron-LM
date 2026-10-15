@@ -762,9 +762,13 @@ class TEGroupedMLP(MegatronModule):
 
         def forward_pre_hook(module, *_) -> None:
             for submodule in chain(self.linear_fc1.modules(), self.linear_fc2.modules()):
-                for hook in submodule._forward_pre_hooks.values():
+                hooks_with_kwargs = submodule._forward_pre_hooks_with_kwargs
+                for hook_id, hook in list(submodule._forward_pre_hooks.items()):
                     # Assume that hook does not interact with input
-                    ret = hook(submodule, None)
+                    if hook_id in hooks_with_kwargs:
+                        ret = hook(submodule, None, {})
+                    else:
+                        ret = hook(submodule, None)
                     if ret is not None:
                         raise RuntimeError(
                             f"Applying a fused implementation for {self.__class__.__name__}, "
